@@ -52,20 +52,20 @@ def run_random_policy(env):
 
 def run_my_policy():
     # create the environment
-    env = gym.make('Deterministic-8x8-FrozenLake-v0')
+    env = gym.make('Deterministic-4x4-FrozenLake-v0')
     print_env_info(env)
 
     gamma = 0.9
-    value_func, it_convergence = rl.value_iteration_async_ordered(env, gamma)
+    value_func, it_convergence = rl.value_iteration_async_custom(env, gamma)
     print('Total number of steps until convergence:', it_convergence)
 
-    i_steps = 0
-    num_trials = 10
-    for i in range(num_trials):
-        value_func, it_convergence = rl.value_iteration_async_randperm(env,
-                                                                       gamma)
-        i_steps += it_convergence
-    print('Total number of steps until convergence: {:.2f}'.format(i_steps/num_trials))
+    # i_steps = 0
+    # num_trials = 10
+    # for i in range(num_trials):
+    #     value_func, it_convergence = rl.value_iteration_async_randperm(env,
+    #                                                                    gamma)
+    #     i_steps += it_convergence
+    # print('Total number of steps until convergence: {:.2f}'.format(i_steps/num_trials))
 
 
 def print_env_info(env):

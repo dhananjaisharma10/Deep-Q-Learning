@@ -537,7 +537,7 @@ def value_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
         it_convergence += 1
         delta = 0
         # Traverse through all states and find the best action
-        states = np.arange(num_states)
+        states = np.arange(num_states)  # shuffle the states
         np.random.shuffle(states)
         for s in states:
             old_val = value_func[s]
@@ -561,7 +561,8 @@ def value_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
     return value_func, it_convergence
 
 
-def value_iteration_async_custom(env, gamma, max_iterations=int(1e3), tol=1e-3):
+def value_iteration_async_custom(env, gamma, max_iterations=int(1e3),
+                                 tol=1e-3):
     """Runs value iteration for a given gamma and environment.
     Updates states by student-defined heuristic.
 
@@ -582,8 +583,38 @@ def value_iteration_async_custom(env, gamma, max_iterations=int(1e3), tol=1e-3):
     np.ndarray, iteration
       The value function and the number of iterations it took to converge.
     """
-    value_func = np.zeros(env.nS)  # initialize value function
-    return value_func, 0
+
+    num_states = env.nS
+    actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
+    value_func = np.zeros(num_states)  # initialize value function
+    it_convergence = 0
+    # NOTE: Get Manhattan ordering of the states
+    grid_size = input('Specify the grid size: ')
+    states = get_manhattan_ordering(int(grid_size))
+    for it in range(max_iterations):
+        it_convergence += 1
+        delta = 0
+        # Traverse through all states and find the best action
+        for s in states:
+            old_val = value_func[s]
+            best_val = float('-inf')  # stores the best action return
+            for a in actions:
+                new_val = 0
+                for (prob, next_state, reward, is_terminal) in env.P[s][a]:
+                    # Terminal state must have a value of 0
+                    # FIXME: Unsure about making the value of terminal state 0
+                    if is_terminal:
+                        value_func[next_state] = 0.0
+                    new_val += prob * (reward + gamma * value_func[next_state])
+                best_val = max(best_val, new_val)
+            value_func[s] = best_val  # assign best return
+            delta = max(delta, np.abs(old_val - best_val))
+
+        # Check for convergence criterion
+        if delta < tol:
+            break
+
+    return value_func, it_convergence
 
 
 ######################
@@ -662,6 +693,29 @@ def value_func_heatmap(env, value_func):
                 yticklabels=np.arange(1, env.nrow+1)[::-1],
                 xticklabels=np.arange(1, env.nrow + 1))
     plt.show()
-    # Other choices of cmap: YlGnBu
-    # More: https://matplotlib.org/3.1.1/gallery/color/colormap_reference.html
     return None
+
+
+def get_manhattan_ordering(grid_size):
+    goal_pos = tuple()  # stores (x, y) position of goal
+    states = np.arange(grid_size * grid_size)
+    if grid_size == 8:
+        goal_pos = (7, 1)  # specified in the map
+    elif grid_size == 4:
+        goal_pos = (1, 1)  # specified in the map
+    states = sorted(states, key=lambda x: get_manhattan_distance(x,
+                                                                 goal_pos,
+                                                                 grid_size))
+    return states
+
+
+def get_cartesian_coordinates(n, grid_size):
+    row = n // grid_size
+    col = n - row * grid_size
+    return row, col
+
+
+def get_manhattan_distance(n, coord2, grid_size):
+    coord1 = get_cartesian_coordinates(n, grid_size)
+    distance = np.abs(coord1[0] - coord2[0]) + np.abs(coord1[1] - coord2[1])
+    return distance
