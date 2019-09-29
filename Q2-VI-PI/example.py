@@ -56,29 +56,16 @@ def run_my_policy():
     print_env_info(env)
 
     gamma = 0.9
-    t = 0
-    for i in range(20):
-        start_time = time.time()
-        policy, value_func, improvement_steps, evaluation_steps = \
-            rl.policy_iteration_sync(env, gamma)
-        end_time = time.time()
-        t += end_time - start_time
-    print('Time for PI: {:.2f}'.format(t / 20))
-    # print('Total number of improvement steps:', improvement_steps)
-    # print('Total number of evaluation iterations:', evaluation_steps)
-    # rl.display_policy_letters(env, policy)
+    value_func, it_convergence = rl.value_iteration_async_ordered(env, gamma)
+    print('Total number of steps until convergence:', it_convergence)
 
-    t = 0
-    for i in range(20):
-        start_time = time.time()
-        value_func, it_convergence = rl.value_iteration_sync(env, gamma)
-        # policy = rl.value_function_to_policy(env, gamma, value_func)
-        end_time = time.time()
-        t += end_time - start_time
-    print('Time for VI: {:.2f}'.format(t / 20))
-    # rl.display_policy_letters(env, policy)
-    # print('Total number of iterations for convergence:', it_convergence)
-    # rl.value_func_heatmap(env, value_func)
+    i_steps = 0
+    num_trials = 10
+    for i in range(num_trials):
+        value_func, it_convergence = rl.value_iteration_async_randperm(env,
+                                                                       gamma)
+        i_steps += it_convergence
+    print('Total number of steps until convergence: {:.2f}'.format(i_steps/num_trials))
 
 
 def print_env_info(env):

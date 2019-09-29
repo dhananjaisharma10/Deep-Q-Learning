@@ -95,6 +95,7 @@ def evaluate_policy_sync(env,
         The value for the given policy and the number of iterations till
         the value function converged.
     """
+
     num_states = env.nS
     value_func = np.zeros(num_states)  # initialize value function
     it_convergence = 0  # number of iterations until convergence
@@ -130,7 +131,7 @@ def evaluate_policy_async_ordered(env,
                                   tol=1e-3):
     """Performs policy evaluation.
 
-    Evaluates the value of a given policy by asynchronous DP.  Updates states
+    Evaluates the value of a given policy by asynchronous DP. Updates states
     in their 1-N order.
 
     Parameters
@@ -153,8 +154,31 @@ def evaluate_policy_async_ordered(env,
       The value for the given policy and the number of iterations till
       the value function converged.
     """
-    value_func = np.zeros(env.nS)  # initialize value function
-    return value_func, 0
+
+    num_states = env.nS
+    value_func = np.zeros(num_states)  # initialize value function
+    it_convergence = 0  # number of iterations until convergence
+    for it in range(max_iterations):
+        it_convergence += 1
+        delta = 0
+        for s in range(num_states):
+            old_val = value_func[s]
+            # Compute the new value
+            a = policy[s]
+            new_val = 0
+            for (prob, next_state, reward, is_terminal) in env.P[s][a]:
+                # Terminal state must have a value of 0
+                # FIXME: Not sure when to make the value 0 for terminal state
+                if is_terminal:
+                    value_func[next_state] = 0.0
+                new_val += prob * (reward + gamma * value_func[next_state])
+            value_func[s] = new_val
+            delta = max(delta, np.abs(old_val - new_val))
+        # Check for convergence criterion
+        if delta < tol:
+            break
+
+    return value_func, it_convergence
 
 
 def evaluate_policy_async_randperm(env, gamma, policy, max_iterations=int(1e3), tol=1e-3):
@@ -183,8 +207,34 @@ def evaluate_policy_async_randperm(env, gamma, policy, max_iterations=int(1e3), 
       The value for the given policy and the number of iterations till
       the value function converged.
     """
-    value_func = np.zeros(env.nS)  # initialize value function
-    return value_func, 0
+
+    num_states = env.nS
+    value_func = np.zeros(num_states)  # initialize value function
+    it_convergence = 0  # number of iterations until convergence
+    for it in range(max_iterations):
+        it_convergence += 1
+        delta = 0
+        # Shuffle the states
+        states = np.arange(num_states)
+        np.random.shuffle(states)
+        for s in states:
+            old_val = value_func[s]
+            # Compute the new value
+            a = policy[s]
+            new_val = 0
+            for (prob, next_state, reward, is_terminal) in env.P[s][a]:
+                # Terminal state must have a value of 0
+                # FIXME: Not sure when to make the value 0 for terminal state
+                if is_terminal:
+                    value_func[next_state] = 0.0
+                new_val += prob * (reward + gamma * value_func[next_state])
+            value_func[s] = new_val
+            delta = max(delta, np.abs(old_val - new_val))
+        # Check for convergence criterion
+        if delta < tol:
+            break
+
+    return value_func, it_convergence
 
 
 def improve_policy(env, gamma, value_func, policy):
@@ -286,9 +336,24 @@ def policy_iteration_async_ordered(env, gamma, max_iterations=int(1e3),
        Returns optimal policy, value function, number of policy
        improvement iterations, and number of value iterations.
     """
-    policy = np.zeros(env.nS, dtype='int')
-    value_func = np.zeros(env.nS)
-    return policy, value_func, 0, 0
+
+    improvement_steps = 0
+    evaluation_steps = 0
+    num_states = env.nS
+    policy = np.zeros(num_states, dtype='int')
+    value_func = np.zeros(num_states)
+    for it in range(max_iterations):
+        # Policy evaluation
+        value_func, it_convergence = evaluate_policy_async_ordered(env, gamma, policy,
+                                                       max_iterations, tol)
+        evaluation_steps += it_convergence
+        # Policy improvement
+        policy_changed, policy = improve_policy(env, gamma, value_func, policy)
+        if not policy_changed:
+            break
+        improvement_steps += 1
+
+    return policy, value_func, improvement_steps, evaluation_steps
 
 
 def policy_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
@@ -316,9 +381,24 @@ def policy_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
        Returns optimal policy, value function, number of policy
        improvement iterations, and number of value iterations.
     """
-    policy = np.zeros(env.nS, dtype='int')
-    value_func = np.zeros(env.nS)
-    return policy, value_func, 0, 0
+
+    improvement_steps = 0
+    evaluation_steps = 0
+    num_states = env.nS
+    policy = np.zeros(num_states, dtype='int')
+    value_func = np.zeros(num_states)
+    for it in range(max_iterations):
+        # Policy evaluation
+        value_func, it_convergence = evaluate_policy_async_randperm(env, gamma, policy,
+                                                        max_iterations, tol)
+        evaluation_steps += it_convergence
+        # Policy improvement
+        policy_changed, policy = improve_policy(env, gamma, value_func, policy)
+        if not policy_changed:
+            break
+        improvement_steps += 1
+
+    return policy, value_func, improvement_steps, evaluation_steps
 
 
 def value_iteration_sync(env, gamma, max_iterations=int(1e3), tol=1e-3):
@@ -395,8 +475,35 @@ def value_iteration_async_ordered(env, gamma, max_iterations=int(1e3), tol=1e-3)
     np.ndarray, iteration
       The value function and the number of iterations it took to converge.
     """
-    value_func = np.zeros(env.nS)  # initialize value function
-    return value_func, 0
+
+    num_states = env.nS
+    actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
+    value_func = np.zeros(num_states)  # initialize value function
+    it_convergence = 0
+    for it in range(max_iterations):
+        it_convergence += 1
+        delta = 0
+        # Traverse through all states and find the best action
+        for s in range(num_states):
+            old_val = value_func[s]
+            best_val = float('-inf')  # stores the best action return
+            for a in actions:
+                new_val = 0
+                for (prob, next_state, reward, is_terminal) in env.P[s][a]:
+                    # Terminal state must have a value of 0
+                    # FIXME: Unsure about making the value of terminal state 0
+                    if is_terminal:
+                        value_func[next_state] = 0.0
+                    new_val += prob * (reward + gamma * value_func[next_state])
+                best_val = max(best_val, new_val)
+            value_func[s] = best_val  # assign best return
+            delta = max(delta, np.abs(old_val - best_val))
+
+        # Check for convergence criterion
+        if delta < tol:
+            break
+
+    return value_func, it_convergence
 
 
 def value_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
@@ -421,8 +528,37 @@ def value_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
     np.ndarray, iteration
       The value function and the number of iterations it took to converge.
     """
-    value_func = np.zeros(env.nS)  # initialize value function
-    return value_func, 0
+
+    num_states = env.nS
+    actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
+    value_func = np.zeros(num_states)  # initialize value function
+    it_convergence = 0
+    for it in range(max_iterations):
+        it_convergence += 1
+        delta = 0
+        # Traverse through all states and find the best action
+        states = np.arange(num_states)
+        np.random.shuffle(states)
+        for s in states:
+            old_val = value_func[s]
+            best_val = float('-inf')  # stores the best action return
+            for a in actions:
+                new_val = 0
+                for (prob, next_state, reward, is_terminal) in env.P[s][a]:
+                    # Terminal state must have a value of 0
+                    # FIXME: Unsure about making the value of terminal state 0
+                    if is_terminal:
+                        value_func[next_state] = 0.0
+                    new_val += prob * (reward + gamma * value_func[next_state])
+                best_val = max(best_val, new_val)
+            value_func[s] = best_val  # assign best return
+            delta = max(delta, np.abs(old_val - best_val))
+
+        # Check for convergence criterion
+        if delta < tol:
+            break
+
+    return value_func, it_convergence
 
 
 def value_iteration_async_custom(env, gamma, max_iterations=int(1e3), tol=1e-3):
