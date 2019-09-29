@@ -5,9 +5,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from builtins import input
 
-import gym
-import deeprl_hw1.lake_envs as lake_env
 import time
+import gym
+from deeprl_hw2q2 import lake_envs, rl
 
 
 def run_random_policy(env):
@@ -50,6 +50,18 @@ def run_random_policy(env):
     return total_reward, num_steps
 
 
+def run_my_policy():
+    # create the environment
+    env = gym.make('Deterministic-4x4-FrozenLake-v0')
+    print_env_info(env)
+
+    gamma = 0.9
+    policy, value_func, improvement_steps, evaluation_steps = \
+        rl.policy_iteration_sync(env, gamma)
+    print('Total number of improvement steps:', improvement_steps)
+    print('Total number of evaluation iterations:', evaluation_steps)
+
+
 def print_env_info(env):
     print('Environment has %d states and %d actions.' % (env.nS, env.nA))
 
@@ -59,7 +71,7 @@ def print_model_info(env, state, action):
     print(
         ('According to transition function, '
          'taking action %s(%d) in state %d leads to'
-         ' %d possible outcomes') % (lake_env.action_names[action],
+         ' %d possible outcomes') % (lake_envs.action_names[action],
                                      action, state, len(transition_table_row)))
     for prob, nextstate, reward, is_terminal in transition_table_row:
         state_type = 'terminal' if is_terminal else 'non-terminal'
@@ -73,9 +85,9 @@ def main():
     env = gym.make('Deterministic-4x4-FrozenLake-v0')
 
     print_env_info(env)
-    print_model_info(env, 0, lake_env.DOWN)
-    print_model_info(env, 1, lake_env.DOWN)
-    print_model_info(env, 14, lake_env.RIGHT)
+    print_model_info(env, 0, lake_envs.DOWN)
+    print_model_info(env, 1, lake_envs.DOWN)
+    print_model_info(env, 14, lake_envs.RIGHT)
 
     input('Hit enter to run a random policy...')
 
@@ -85,4 +97,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    run_my_policy()
