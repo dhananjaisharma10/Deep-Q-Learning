@@ -341,9 +341,37 @@ def value_iteration_sync(env, gamma, max_iterations=int(1e3), tol=1e-3):
     np.ndarray, iteration
       The value function and the number of iterations it took to converge.
     """
-    value_func = np.zeros(env.nS)  # initialize value function
-    
-    return value_func, 0
+
+    num_states = env.nS
+    actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
+    value_func = np.zeros(num_states)  # initialize value function
+    it_convergence = 0
+    for it in range(max_iterations):
+        it_convergence += 1
+        new_value_func = np.zeros_like(value_func)
+        delta = 0
+        # Traverse through all states and find the best action
+        for s in range(num_states):
+            old_val = value_func[s]
+            best_val = float('-inf')  # stores the best action return
+            for a in actions:
+                new_val = 0
+                for (prob, next_state, reward, is_terminal) in env.P[s][a]:
+                    # Terminal state must have a value of 0
+                    # FIXME: Unsure about making the value of terminal state 0
+                    if is_terminal:
+                        value_func[next_state] = 0.0
+                    new_val += prob * (reward + gamma * value_func[next_state])
+                best_val = max(best_val, new_val)
+            new_value_func[s] = best_val  # assign best return
+            delta = max(delta, np.abs(old_val - best_val))
+
+        value_func = new_value_func  # Update value function for next iter
+        # Check for convergence criterion
+        if delta < tol:
+            break
+
+    return value_func, it_convergence
 
 
 def value_iteration_async_ordered(env, gamma, max_iterations=int(1e3), tol=1e-3):
