@@ -3,6 +3,8 @@ from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 import deeprl_hw2q2.lake_envs as lake_env
 
 
@@ -45,23 +47,22 @@ def value_function_to_policy(env, gamma, value_function):
     """
     # NOTE: You might want to first calculate Q value, and then take the argmax
     actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
-    policy = np.zeros_like(value_function, dtype='int')
+    q_values = np.zeros(shape=(env.nS, len(actions)))  # (s, a)
     num_states = env.nS
-    # Traverse through all states
+    # Traverse through all states and find the best action
     for s in range(num_states):
-        max_return = float('-inf')
-        # Take action a for state s
-        for a in actions:
+        for idx, a in enumerate(actions):
             new_val = 0
             for (prob, next_state, reward, is_terminal) in env.P[s][a]:
-                # If it's a terminal state, it must have a zero value
+                # Terminal state must have a value of 0
+                # FIXME: Not sure when to make the value 0 for terminal state
                 if is_terminal:
                     value_function[next_state] = 0.0
                 new_val += prob * (reward + gamma * value_function[next_state])
-            # Check for action value
-            if new_val > max_return:
-                max_return = new_val
-                policy[s] = a
+            q_values[s][idx] = new_val
+    best_actions = np.argmax(q_values, axis=1)
+    policy = np.array([actions[action] for action in best_actions])
+    assert(len(policy) == len(value_function))
     return policy
 
 
@@ -98,6 +99,7 @@ def evaluate_policy_sync(env,
     value_func = np.zeros(num_states)  # initialize value function
     it_convergence = 0  # number of iterations until convergence
     for it in range(max_iterations):
+        new_value_func = np.zeros_like(value_func)  # to store new values
         it_convergence += 1
         delta = 0
         for s in range(num_states):
@@ -106,13 +108,15 @@ def evaluate_policy_sync(env,
             a = policy[s]
             new_val = 0
             for (prob, next_state, reward, is_terminal) in env.P[s][a]:
-                # If it's a terminal state, it must have a zero value
+                # Terminal state must have a value of 0
+                # FIXME: Not sure when to make the value 0 for terminal state
                 if is_terminal:
                     value_func[next_state] = 0.0
                 new_val += prob * (reward + gamma * value_func[next_state])
-            value_func[s] = new_val
-            delta = max(delta, np.abs(old_val - old_val))
-        # Check if convergence criterion is met
+            new_value_func[s] = new_val
+            delta = max(delta, np.abs(old_val - new_val))
+        value_func = new_value_func  # Update value function for next iter
+        # Check for convergence criterion
         if delta < tol:
             break
 
@@ -205,31 +209,10 @@ def improve_policy(env, gamma, value_func, policy):
     bool, np.ndarray
       Returns true if policy changed. Also returns the new policy.
     """
-    actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
-    policy_changed = False
-    num_states = env.nS
-    # Traverse through all states
-    for s in range(num_states):
-        best_action = -1
-        max_return = float('-inf')
-        # Take action a for state s
-        for a in actions:
-            new_val = 0
-            for (prob, next_state, reward, is_terminal) in env.P[s][a]:
-                # If it's a terminal state, it must have a zero value
-                if is_terminal:
-                    value_func[next_state] = 0.0
-                new_val += prob * (reward + gamma * value_func[next_state])
-            # Check for action value
-            if new_val > max_return:
-                max_return = new_val
-                best_action = a
-        # Check if policy needs to be updated
-        if policy[s] != best_action:
-            policy_changed = True
-            policy[s] = best_action
-
-    return policy_changed, policy
+    best_action_policy = value_function_to_policy(env, gamma, value_func)
+    assert(len(best_action_policy) == len(policy))
+    policy_changed = not np.array_equal(best_action_policy, policy)
+    return policy_changed, best_action_policy
 
 
 def policy_iteration_sync(env, gamma, max_iterations=int(1e3), tol=1e-3):
@@ -359,6 +342,7 @@ def value_iteration_sync(env, gamma, max_iterations=int(1e3), tol=1e-3):
       The value function and the number of iterations it took to converge.
     """
     value_func = np.zeros(env.nS)  # initialize value function
+    
     return value_func, 0
 
 
@@ -505,11 +489,15 @@ def value_func_heatmap(env, value_func):
     env: gym.core.Environment
     value_func: np.ndarray, with shape (env.nS)
     """
-    fig, ax = plt.subplots(figsize=(7,6)) 
-    sns.heatmap(np.reshape(value_func, [env.nrow, env.ncol]), 
-                annot=False, linewidths=.5, cmap="GnBu_r", ax=ax,
-                yticklabels = np.arange(1, env.nrow+1)[::-1], 
-                xticklabels = np.arange(1, env.nrow+1)) 
+    fig, ax = plt.subplots(figsize=(7, 6))
+    sns.heatmap(np.reshape(value_func, [env.nrow, env.ncol]),
+                annot=True,
+                linewidths=.5,
+                cmap="GnBu_r",
+                ax=ax,
+                yticklabels=np.arange(1, env.nrow+1)[::-1],
+                xticklabels=np.arange(1, env.nrow + 1))
+    plt.show()
     # Other choices of cmap: YlGnBu
     # More: https://matplotlib.org/3.1.1/gallery/color/colormap_reference.html
     return None

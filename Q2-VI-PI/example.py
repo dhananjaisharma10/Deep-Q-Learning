@@ -52,7 +52,7 @@ def run_random_policy(env):
 
 def run_my_policy():
     # create the environment
-    env = gym.make('Deterministic-4x4-FrozenLake-v0')
+    env = gym.make('Deterministic-8x8-FrozenLake-v0')
     print_env_info(env)
 
     gamma = 0.9
@@ -60,6 +60,8 @@ def run_my_policy():
         rl.policy_iteration_sync(env, gamma)
     print('Total number of improvement steps:', improvement_steps)
     print('Total number of evaluation iterations:', evaluation_steps)
+    rl.display_policy_letters(env, policy)
+    rl.value_func_heatmap(env, value_func)
 
 
 def print_env_info(env):
