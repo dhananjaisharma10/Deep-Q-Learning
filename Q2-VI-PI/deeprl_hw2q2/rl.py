@@ -45,7 +45,7 @@ def value_function_to_policy(env, gamma, value_function):
         in that state according to the environment dynamics and the
         given value function.
     """
-    # NOTE: You might want to first calculate Q value, and then take the argmax
+    # NOTE: You might want to first calculate Q value, followed by argmax
     actions = [lake_env.LEFT, lake_env.RIGHT, lake_env.UP, lake_env.DOWN]
     q_values = np.zeros(shape=(env.nS, len(actions)))  # (s, a)
     num_states = env.nS
@@ -181,7 +181,11 @@ def evaluate_policy_async_ordered(env,
     return value_func, it_convergence
 
 
-def evaluate_policy_async_randperm(env, gamma, policy, max_iterations=int(1e3), tol=1e-3):
+def evaluate_policy_async_randperm(env,
+                                   gamma,
+                                   policy,
+                                   max_iterations=int(1e3),
+                                   tol=1e-3):
     """Performs policy evaluation.
 
     Evaluates the value of a policy.  Updates states by randomly sampling index
@@ -344,9 +348,11 @@ def policy_iteration_async_ordered(env, gamma, max_iterations=int(1e3),
     value_func = np.zeros(num_states)
     for it in range(max_iterations):
         # Policy evaluation
-        value_func, it_convergence = evaluate_policy_async_ordered(env, gamma, policy,
-                                                       max_iterations, tol)
-        evaluation_steps += it_convergence
+        value_func, it_converg = evaluate_policy_async_ordered(env, gamma,
+                                                               policy,
+                                                               max_iterations,
+                                                               tol)
+        evaluation_steps += it_converg
         # Policy improvement
         policy_changed, policy = improve_policy(env, gamma, value_func, policy)
         if not policy_changed:
@@ -389,9 +395,11 @@ def policy_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
     value_func = np.zeros(num_states)
     for it in range(max_iterations):
         # Policy evaluation
-        value_func, it_convergence = evaluate_policy_async_randperm(env, gamma, policy,
-                                                        max_iterations, tol)
-        evaluation_steps += it_convergence
+        value_func, it_converg = evaluate_policy_async_randperm(env, gamma,
+                                                                policy,
+                                                                max_iterations,
+                                                                tol)
+        evaluation_steps += it_converg
         # Policy improvement
         policy_changed, policy = improve_policy(env, gamma, value_func, policy)
         if not policy_changed:
@@ -454,7 +462,10 @@ def value_iteration_sync(env, gamma, max_iterations=int(1e3), tol=1e-3):
     return value_func, it_convergence
 
 
-def value_iteration_async_ordered(env, gamma, max_iterations=int(1e3), tol=1e-3):
+def value_iteration_async_ordered(env,
+                                  gamma,
+                                  max_iterations=int(1e3),
+                                  tol=1e-3):
     """Runs value iteration for a given gamma and environment.
     Updates states in their 1-N order.
 
@@ -657,19 +668,20 @@ def env_wrapper(env_name):
         envd4 = env_load('Deterministic-4x4-FrozenLake-v0')
         envd8 = env_load('Deterministic-8x8-FrozenLake-v0')
     """
-    env = gym.make(env_name)
+    # env = gym.make(env_name)
 
-    # T : the transition probability from s to s’ via action a
-    # R : the reward you get when moving from s to s' via action a
-    env.T = np.zeros((env.nS, env.nA, env.nS))
-    env.R = np.zeros((env.nS, env.nA, env.nS))
+    # # T : the transition probability from s to s’ via action a
+    # # R : the reward you get when moving from s to s' via action a
+    # env.T = np.zeros((env.nS, env.nA, env.nS))
+    # env.R = np.zeros((env.nS, env.nA, env.nS))
 
-    for state in range(env.nS):
-        for action in range(env.nA):
-            for prob, nextstate, reward, is_terminal in env.P[state][action]:
-                env.T[state, action, nextstate] = prob
-                env.R[state, action, nextstate] = reward
-    return env
+    # for state in range(env.nS):
+    #     for action in range(env.nA):
+    #         for prob, nextstate, reward, is_terminal in env.P[state][action]:
+    #             env.T[state, action, nextstate] = prob
+    #             env.R[state, action, nextstate] = reward
+    # return env
+    pass
 
 
 def value_func_heatmap(env, value_func):
@@ -697,6 +709,7 @@ def value_func_heatmap(env, value_func):
 
 
 def get_manhattan_ordering(grid_size):
+    # TODO: write the docstring
     goal_pos = tuple()  # stores (x, y) position of goal
     states = np.arange(grid_size * grid_size)
     if grid_size == 8:
@@ -710,12 +723,14 @@ def get_manhattan_ordering(grid_size):
 
 
 def get_cartesian_coordinates(n, grid_size):
+    # TODO: write the docstring
     row = n // grid_size
     col = n - row * grid_size
     return row, col
 
 
 def get_manhattan_distance(n, coord2, grid_size):
+    # TODO: write the docstring
     coord1 = get_cartesian_coordinates(n, grid_size)
     distance = np.abs(coord1[0] - coord2[0]) + np.abs(coord1[1] - coord2[1])
     return distance
