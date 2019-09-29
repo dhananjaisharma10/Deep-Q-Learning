@@ -5,3 +5,7 @@ __pycache__/
 
 # MacOS files
 .DS_Store
+
+# Project files
+/*.project
+/*.pydevproject
