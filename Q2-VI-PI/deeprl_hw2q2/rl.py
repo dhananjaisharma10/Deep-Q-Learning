@@ -308,9 +308,9 @@ def policy_iteration_sync(env, gamma, max_iterations=int(1e3), tol=1e-3):
         evaluation_steps += it_convergence
         # Policy improvement
         policy_changed, policy = improve_policy(env, gamma, value_func, policy)
+        improvement_steps += 1
         if not policy_changed:
             break
-        improvement_steps += 1
 
     return policy, value_func, improvement_steps, evaluation_steps
 
@@ -355,9 +355,9 @@ def policy_iteration_async_ordered(env, gamma, max_iterations=int(1e3),
         evaluation_steps += it_converg
         # Policy improvement
         policy_changed, policy = improve_policy(env, gamma, value_func, policy)
+        improvement_steps += 1
         if not policy_changed:
             break
-        improvement_steps += 1
 
     return policy, value_func, improvement_steps, evaluation_steps
 
@@ -402,9 +402,9 @@ def policy_iteration_async_randperm(env, gamma, max_iterations=int(1e3),
         evaluation_steps += it_converg
         # Policy improvement
         policy_changed, policy = improve_policy(env, gamma, value_func, policy)
+        improvement_steps += 1
         if not policy_changed:
             break
-        improvement_steps += 1
 
     return policy, value_func, improvement_steps, evaluation_steps
 
