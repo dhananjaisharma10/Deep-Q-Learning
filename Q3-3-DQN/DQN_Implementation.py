@@ -36,7 +36,7 @@ class QNetwork():
         self.l2 = Dense(10, activation='relu')(self.l1)
         self.l3 = Dense(out_dim, activation='relu')(self.l2)
         self.model = Model(inputs=self.x, outputs=self.l3)
-        self.loss = 'mean_squared_error'
+        self.loss = 'mse'
         self.optimizer = 'adam'
         self.model.compile(optimizer=self.optimizer,
                            loss=self.loss,
@@ -59,7 +59,7 @@ class QNetwork():
         """Helper funciton to load model weights.
         NOTE: we will use this function instead of load_model
         """
-        self.model.load_weights(weights_file)
+        self.model.load_weights(weight_file)
 
 
 class Replay_Memory():
@@ -173,16 +173,21 @@ class DQN_Agent():
                 X = self.r_memory.sample_batch(self.batch_size)
                 X = np.array(X)
                 p_states = X[:, 0]
+                actions = X[:, 1]
                 n_states = X[:, 3]
                 rewards = X[:, 2]
                 q_values = self.q_network.model.predict(n_states)
-                y = np.max(q_values, axis=1)  # maximum q_value
-                y += rewards  # add rewards
-                history = self.q_network.model.fit(p_states, y,
+                q_target = np.max(q_values, axis=1)  # maximum q_value
+                q_target += rewards  # add rewards
+                q_net = self.q_network.model.predict(p_states)
+                q_net[:, actions] = q_target
+                history = self.q_network.model.fit(p_states, q_net,
                                                    epochs=self.epochs,
                                                    batch_size=self.batch_size,
                                                    verbose=1)
-                
+                print('Loss: {:.2f} | Accuracy: {:.2f}%'.format(
+                    history.history['loss'][-1],
+                    100 * history.history['acc'][-1]))
 
     def test(self, model_file=None):
         """Evaluate the performance of your agent over 100 episodes, by
