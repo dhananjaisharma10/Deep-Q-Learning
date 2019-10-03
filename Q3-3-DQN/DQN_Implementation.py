@@ -31,13 +31,13 @@ class QNetwork():
         variables, or alternately compile your model here.
         """
 
-        # A neural network with 3 fully-connected layers should suffice for
-        # the low-dimensional environments that we are working with.
+        # Model configuration
         inp_dim = env.observation_space.shape[0]
         out_dim = env.action_space.n
         self.model = keras.models.Sequential([
-            Dense(cfg.HIDDEN_1, activation='tanh', input_shape=(inp_dim,)),
-            Dense(cfg.HIDDEN_2, activation='tanh'),
+            Dense(cfg.HIDDEN_1, activation=cfg.ACTIVATION,
+                  input_shape=(inp_dim,)),
+            Dense(cfg.HIDDEN_2, activation=cfg.ACTIVATION),
             Dense(out_dim)
         ])
         self.loss = 'mse'
@@ -49,12 +49,6 @@ class QNetwork():
         self.weights_direc = cfg.WEIGHTS
         if not osp.exists(self.weights_direc):
             os.makedirs(self.weights_direc)
-
-    def save_model_weights(self, suffix):
-        """Helper function to save your model/weights.
-        """
-        filepath = osp.join(self.weights_direc, 'ckpt_{}.h5'.format(suffix))
-        self.model.save_weights(filepath)
 
     def load_model(self, model_file):
         """Helper function to load an existing model.
@@ -135,27 +129,25 @@ class DQN_Agent():
         self.batch_size = cfg.BATCH_SIZE
         self.epochs = cfg.EPOCHS
         self.interval = cfg.INTERVAL
+        self.weights_direc = cfg.WEIGHTS
+        self.test_rewards = list()
+        self.td_errors = list()
+        self.early_stopping = deque(maxlen=cfg.EARLY_STOPPING)
 
     def epsilon_greedy_policy(self, q_values):
-        """Creating epsilon greedy probabilities to sample from.
+        """Return an action based on the epsilon greedy policy
         """
 
-        # probs = np.full_like(q_values, self.epsilon / len(q_values))
-        # max_idx = np.argmax(q_values)  # index of the max q-value
-        # probs[max_idx] += (1 - self.epsilon)  # update the prob for max_idx
-        # return probs
-
         if np.random.uniform() < self.epsilon:
-            return np.random.randint(0, 2)
+            return np.random.randint(0, self.env.action_space.n)
         else:
             return np.argmax(q_values)
 
-    def greedy_policy(self, q_values):
-        """Creating greedy policy for test time.
+    def save_model_weights(self, directory, episode):
+        """Save the weights of a model
         """
-
-        policy = np.argmax(q_values, axis=1)
-        return policy
+        filepath = osp.join(directory, 'ckpt_{}.h5'.format(episode))
+        self.q_network.model.save_weights(filepath)
 
     def train(self):
         """In this function, we will train our network.
@@ -173,24 +165,32 @@ class DQN_Agent():
             return run_id
 
         print('*' * 10, 'TRAINING', '*' * 10)
+        # Create directory for this run_id
         run_id = get_run_id()
+        self.model_weights = osp.join(self.weights_direc, run_id)
+        if not osp.exists(self.model_weights):
+            os.makedirs(self.model_weights)
+
         start = time.time()
         # Initialize replay memory
         self.burn_in_memory()
         episode_rewards = list()
+        best_reward = 0
+        training = True
         for episode in range(self.train_episodes):
             r = list()  # cummulative reward for current episode
             done = False
             state = self.env.reset()
+            td_error = 0
+            it = 0
             while not done:
+                it += 1
                 prev_state = state
                 # Step 1: Get action based on epsilon greedy policy
                 q_values = self.q_network.model.predict(
                     np.array(prev_state).reshape(1, -1))
                 q_values = q_values[0]
                 action = self.epsilon_greedy_policy(q_values)
-                # action = np.random.choice(np.arange(self.env.action_space.n),
-                #                           p=probs)
                 state, reward, done, _ = self.env.step(action)
                 r.append(reward)
                 # Step 2: Add data for replay buffer
@@ -203,51 +203,59 @@ class DQN_Agent():
                 actions = [x[1] for x in X]
                 rewards = [x[2] for x in X]
                 dones = np.asarray([x[4] for x in X])
+                dones = 1 - dones  # for handling terminal states
                 # Step 4: target q (current) = r + gamma * max q (next)
                 q_net = self.q_network.model.predict(p_states)
-                q_values = self.q_network.model.predict(n_states)
-
-                # q_target = np.max(q_values, axis=1)  # maximum q_value
-                # q_target *= self.gamma * (1 - dones)
-                # q_target += rewards  # add rewards
-                # q_net[:, actions] = q_target
-
-                for i in range(len(rewards)):
-                    q_net[i, actions[i]] = rewards[i]
-                    if not dones[i]:
-                        q_net[i, actions[i]] += self.gamma * np.max(q_values[i])
-
-                history = self.q_network.model.fit(p_states, q_net,
-                                                   epochs=self.epochs,
-                                                   batch_size=self.batch_size,
-                                                   verbose=0)
-                # print('Loss: {:.2f} | Accuracy: {:.2f}%'.format(
-                #     history.history['loss'][-1],
-                #     100 * history.history['acc'][-1]))
-            # print('Episode: {}/{}'.format(episode + 1, self.train_episodes),
-            #       end='\r')
-
+                q_target = self.q_network.model.predict(n_states)
+                q_target = np.max(q_target, axis=1)  # greedy policy
+                q_target *= (self.gamma * dones)
+                q_target += rewards
+                q_curr = q_net[range(self.batch_size), actions]
+                q_net[range(self.batch_size), actions] = q_target
+                td_error += np.mean(np.absolute(q_target - q_curr))
+                if training:
+                    history = self.q_network.model.fit(
+                        p_states, q_net, epochs=self.epochs,
+                        batch_size=self.batch_size, verbose=0)
             # epsilon decay
             if self.epsilon > self.epsilon_min:
                 self.epsilon -= self.decay_step
-
+            # TD errors
+            self.td_errors.append(td_error / it)
             end = time.time()
             sum_of_reward = sum(r)
+            # Early stopping criterion
+            self.early_stopping.append(sum_of_reward)
+            if len(self.early_stopping) == self.early_stopping.maxlen:
+                if int(np.mean(self.early_stopping)) == 200:
+                    training = False
             episode_rewards.append(sum_of_reward)
-            if episode % self.interval == 0:
-                print('Reward for episode {}: {:.2f} | Time '
-                      'elapsed: {:.2f} mins'.format(episode, sum_of_reward,
-                                                    (end - start) / 60))
-                # self.q_network.save_model_weights(episode)
-            # plt.figure()
-            # plt.plot(episode_rewards)
-            # plt.xlabel('#episodes')
-            # plt.ylabel('reward')
-            # plt.savefig('cartpole_{}.png'.format(run_id), dpi=400,
-            #             bbox_inches='tight')
-            # plt.close()
+            print('Reward for episode {}: {:.2f} | Time elapsed: {:.2f}'
+                  ' mins'.format(episode, sum_of_reward, (end - start) / 60))
+            # Create video at every (train_episodes/3)th episode
+            if episode % (self.train_episodes // 3) == 0:
+                videopath = osp.join(self.model_weights,
+                                     'video_{}'.format(episode))
+                if not osp.exists(videopath):
+                    os.makedirs(videopath)
+                test_video(self.q_network.model, self.env, videopath)
+            # Save weights if highest reward so far and evaluate
+            if best_reward < sum_of_reward or episode % self.interval == 0:
+                best_reward = sum_of_reward
+                self.save_model_weights(self.model_weights, episode)
+                # Evaluate after every cfg.INTERVALth episode
+                if episode % self.interval == 0:
+                    self.test()
+                # Plot TD error
+                plt.figure()
+                plt.plot(self.td_errors)
+                plt.xlabel('#episodes')
+                plt.ylabel('td error')
+                tdpath = osp.join(self.model_weights, 'td_error.png')
+                plt.savefig(tdpath, dpi=400, bbox_inches='tight')
+                plt.close()
 
-    def test(self, model_file=None):
+    def test(self):
         """Evaluate the performance of your agent over 100 episodes, by
         calculating cummulative rewards for the 100 episodes. Here you
         need to interact with the environment, irrespective of whether
@@ -255,35 +263,36 @@ class DQN_Agent():
         """
 
         print('*'*10, 'EVALUATION', '*'*10)
-        self.q_network.model.load_weights(model_file)
-        cum_rewards = []
         rewards = []
         for episode in range(self.test_episodes):
             state = self.env.reset()
             done = False
-            r = []
+            r = list()
             while not done:
                 q_values = self.q_network.model.predict(
                     np.array(state).reshape(1, -1))
-                action = np.argmax(q_values)
+                action = np.argmax(q_values)  # greedy policy
                 state, reward, done, _ = self.env.step(action)
                 r.append(reward)
             rewards.append(sum(r))
-            cum_rewards.append(np.mean(rewards))
-        print('Reward after {} episodes: {:.2f}'.format(self.test_episodes,
-                                                        np.mean(rewards)))
+        self.test_rewards.append(np.mean(rewards))
+        filepath = osp.join(self.model_weights, 'test_rewards.npy')
+        np.save(filepath, self.test_rewards)
+        # Plot test rewards
         plt.figure()
-        plt.plot(cum_rewards)
+        episodes = np.arange(len(self.test_rewards)) * 100
+        plt.plot(episodes, self.test_rewards)
         plt.xlabel('#episodes')
         plt.ylabel('reward')
-        plt.savefig('plot.png', bboxes_inches='tight', dpi=400)
+        imagepath = osp.join(self.model_weights, 'eval.png')
+        plt.savefig(imagepath, bboxes_inches='tight', dpi=400)
+        plt.close()
 
     def burn_in_memory(self):
         """Initialize your replay memory with a burn_in number
         of episodes/transitions.
         """
 
-        # Refer to Piazza post #226 for more details.
         while len(self.r_memory.memory) < self.r_memory.burn_in:
             state = self.env.reset()
             done = False
@@ -301,27 +310,19 @@ class DQN_Agent():
 
 # NOTE: if you have problems creating video captures on servers without GUI,
 # you could save and relaod model to create videos on your laptop.
-def test_video(agent, env, epi):
-    # Usage:
-    # 	you can pass the arguments within agent.train() as:
-    # 		if episode % int(self.num_episodes/3) == 0:
-    #       	test_video(self, self.environment_name, episode)
-    save_path = "./videos-%s-%s" % (env, epi)
-    if not osp.exists(save_path):
-        os.mkdir(save_path)
-    # To create video
-    env = gym.wrappers.Monitor(agent.env, save_path, force=True)
-    reward_total = []
+def test_video(model, env, save_path):
+    env = gym.wrappers.Monitor(env, save_path)
+    reward_total = list()
     state = env.reset()
     done = False
     while not done:
         env.render()
-        action = agent.epsilon_greedy_policy(state, 0.05)
-        next_state, reward, done, info = env.step(action)
-        state = next_state
+        q_values = model.predict(np.array(state).reshape(1, -1))
+        action = np.argmax(q_values)
+        state, reward, done, _ = env.step(action)
         reward_total.append(reward)
     print("reward_total: {}".format(np.sum(reward_total)))
-    agent.env.close()
+    env.close()
 
 
 def parse_arguments():
@@ -329,9 +330,6 @@ def parse_arguments():
                                      'Argument Parser')
     parser.add_argument('--env', dest='env',
                         help='Configuration file of the environment')
-    parser.add_argument('--render', dest='render', type=int, default=0)
-    parser.add_argument('--train', dest='train', type=int, default=1)
-    parser.add_argument('--model', dest='model_file', type=str)
     return parser.parse_args()
 
 
@@ -348,11 +346,8 @@ def main(args):
     # Setting this as the default tensorflow session.
     keras.backend.tensorflow_backend.set_session(sess)
 
-    # You want to create an instance of the DQN_Agent class here,
-    # and then train / test it.
     agent = DQN_Agent(cfg)
     agent.train()
-    # agent.test(osp.join(cfg.WEIGHTS, 'ckpt_80.h5'))
 
 
 if __name__ == '__main__':

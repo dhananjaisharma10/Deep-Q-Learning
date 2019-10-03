@@ -6,6 +6,10 @@ __pycache__/
 # MacOS files
 .DS_Store
 
+# Sub-directories
+Q3-3-DQN/cartpole_weights/
+Q3-3-DQN/mountaincar_weights/
+
 # VSCODE files
 .vscode/
 
