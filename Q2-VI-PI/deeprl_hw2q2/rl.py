@@ -709,7 +709,12 @@ def value_func_heatmap(env, value_func):
 
 
 def get_manhattan_ordering(grid_size):
-    # TODO: write the docstring
+    """Generate states according to manhattan distance.
+    
+    Parameters
+    ----------
+    grid_size: 4 (CartPole) or 8 (MountainCar)
+    """
     goal_pos = tuple()  # stores (x, y) position of goal
     states = np.arange(grid_size * grid_size)
     if grid_size == 8:
@@ -723,14 +728,27 @@ def get_manhattan_ordering(grid_size):
 
 
 def get_cartesian_coordinates(n, grid_size):
-    # TODO: write the docstring
+    """Convert state to cartesian coordinate.
+    
+    Parameters
+    ----------
+    n: State number
+    grid_size: 4 (CartPole) or 8 (MountainCar)
+    """
     row = n // grid_size
     col = n - row * grid_size
     return row, col
 
 
 def get_manhattan_distance(n, coord2, grid_size):
-    # TODO: write the docstring
+    """Calculate manhattan distance between state and goal.
+    
+    Parameters
+    ----------
+    n: State number
+    coord2: Goal state cartesian coordinate.
+    grid_size: 4 (CartPole) or 8 (MountainCar)
+    """
     coord1 = get_cartesian_coordinates(n, grid_size)
     distance = np.abs(coord1[0] - coord2[0]) + np.abs(coord1[1] - coord2[1])
     return distance
