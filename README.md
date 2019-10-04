@@ -11,18 +11,18 @@ The subfolder `Q3-3-DQN/` consists of the modules: `DQN_Implementation.py`, `car
 - QNetwork: implements the Q learning algorithm by using a neural network for
 approximating the Q value function.
 - Replay_Memory: implements the replay buffer used to train the DQN agent.
-- DQN_Agent: implements the DQN algorith by combining Q learning with replay buffer
-
-The module takes as argument the environment name as given in OpenAI gym. For example: `CartPole-v0` and `MountainCar-v0`.
+- DQN_Agent: implements the DQN algorithm by combining Q learning with replay buffer.
 
 `cartpole.py` and `mountaincar.py` are the configuration files for environments `CartPole-v0` and `MountainCar-v0`, respectively.
 
+The module takes as argument the environment's config file as specified above.
+
 In order to run the code, please type the following command in terminal:
 ```
-python Q3-3-DQN/DQN_Implementation.py
+python Q3-3-DQN/DQN_Implementation.py --env <environment's .py config file>
 ```
 
-The module will also generate videos of the environment at scheduled times as specified in the configuration.
+The module will also generate videos of the environment at 0/3, 1/3, 2/3 and 3/3 of the total number of episodes as specified in the configuration.
 
 # Value Iteration and Policy Iteration
 
@@ -34,6 +34,7 @@ The subfolder `Q2-VI-PI\deeprl_hw2q2` consists of modules `lake_envs.py` and `rl
 - custom: only for value iteration. We implement value iteration using Manhattan Distance ordering of the states.
 
 To run the code, please specify the configuration to be tested in the function `run_my_policy` in the module `Q2-VI-PI/runner.py`. Then run it by typing the following code in terminal:
+
 ```
 python Q2-VI-PI/runner.py
 ```
