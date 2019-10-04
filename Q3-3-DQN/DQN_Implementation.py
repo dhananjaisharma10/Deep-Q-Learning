@@ -11,11 +11,12 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+from collections import deque
 from datetime import datetime
 from importlib import import_module
-from collections import deque
-from keras.optimizers import Adam
+
 from keras.layers import Dense
+from keras.optimizers import Adam
 from keras.models import load_model
 
 
@@ -117,7 +118,6 @@ class DQN_Agent():
         """
 
         self.env = gym.make(cfg.ENV)
-        # self.env = gym.wrappers.Monitor(self.env, 'recording')
         self.q_network = QNetwork(self.env, cfg)
         self.r_memory = Replay_Memory(memory_size=cfg.BUFFER_SIZE)
         self.train_episodes = cfg.NUM_TRAINING_EPISODES
@@ -133,6 +133,7 @@ class DQN_Agent():
         self.test_rewards = list()
         self.td_errors = list()
         self.early_stopping = deque(maxlen=cfg.EARLY_STOPPING)
+        self.early_stop_reward = cfg.EARLY_STOPPING_REWARD
 
     def epsilon_greedy_policy(self, q_values):
         """Return an action based on the epsilon greedy policy
@@ -148,6 +149,24 @@ class DQN_Agent():
         """
         filepath = osp.join(directory, 'ckpt_{}.h5'.format(episode))
         self.q_network.model.save_weights(filepath)
+
+    def plot(self,
+             filepath,
+             y_label,
+             x_label,
+             y_values,
+             x_values=None):
+        """Function to plot rewards and TD errors, and save them
+        """
+        plt.figure()
+        if x_values is not None:
+            plt.plot(x_values, y_values)
+        else:
+            plt.plot(y_values)
+        plt.ylabel(y_label)
+        plt.xlabel(x_label)
+        plt.savefig(filepath, dpi=400, bboxes_inches='tight')
+        plt.close()
 
     def train(self):
         """In this function, we will train our network.
@@ -177,6 +196,7 @@ class DQN_Agent():
         episode_rewards = list()
         best_reward = 0
         training = True
+        early_stop_episode = self.train_episodes
         for episode in range(self.train_episodes):
             r = list()  # cummulative reward for current episode
             done = False
@@ -227,8 +247,9 @@ class DQN_Agent():
             # Early stopping criterion
             self.early_stopping.append(sum_of_reward)
             if len(self.early_stopping) == self.early_stopping.maxlen:
-                if int(np.mean(self.early_stopping)) == 200:
+                if int(np.mean(self.early_stopping)) >= self.early_stop_reward:
                     training = False
+                    early_stop_episode = min(episode, early_stop_episode)
             episode_rewards.append(sum_of_reward)
             print('Reward for episode {}: {:.2f} | Time elapsed: {:.2f}'
                   ' mins'.format(episode, sum_of_reward, (end - start) / 60))
@@ -243,17 +264,13 @@ class DQN_Agent():
             if best_reward < sum_of_reward or episode % self.interval == 0:
                 best_reward = sum_of_reward
                 self.save_model_weights(self.model_weights, episode)
-                # Evaluate after every cfg.INTERVALth episode
+                # Evaluate after every (cfg.INTERVAL)th episode
                 if episode % self.interval == 0:
                     self.test()
+                    print('Early stop episode:', early_stop_episode)
                 # Plot TD error
-                plt.figure()
-                plt.plot(self.td_errors)
-                plt.xlabel('#episodes')
-                plt.ylabel('td error')
                 tdpath = osp.join(self.model_weights, 'td_error.png')
-                plt.savefig(tdpath, dpi=400, bbox_inches='tight')
-                plt.close()
+                self.plot(tdpath, 'td error', '#episodes', self.td_errors)
 
     def test(self):
         """Evaluate the performance of your agent over 100 episodes, by
@@ -279,14 +296,10 @@ class DQN_Agent():
         filepath = osp.join(self.model_weights, 'test_rewards.npy')
         np.save(filepath, self.test_rewards)
         # Plot test rewards
-        plt.figure()
-        episodes = np.arange(len(self.test_rewards)) * 100
-        plt.plot(episodes, self.test_rewards)
-        plt.xlabel('#episodes')
-        plt.ylabel('reward')
+        episodes = np.arange(len(self.test_rewards))
         imagepath = osp.join(self.model_weights, 'eval.png')
-        plt.savefig(imagepath, bboxes_inches='tight', dpi=400)
-        plt.close()
+        self.plot(imagepath, 'reward', '#episodes', self.test_rewards,
+                  episodes)
 
     def burn_in_memory(self):
         """Initialize your replay memory with a burn_in number
@@ -308,9 +321,9 @@ class DQN_Agent():
         assert(len(self.r_memory.memory) == self.r_memory.burn_in)
 
 
-# NOTE: if you have problems creating video captures on servers without GUI,
-# you could save and relaod model to create videos on your laptop.
 def test_video(model, env, save_path):
+    """Function to capture a video of agent affecting the environment
+    """
     env = gym.wrappers.Monitor(env, save_path)
     reward_total = list()
     state = env.reset()
@@ -345,7 +358,6 @@ def main(args):
 
     # Setting this as the default tensorflow session.
     keras.backend.tensorflow_backend.set_session(sess)
-
     agent = DQN_Agent(cfg)
     agent.train()
 
