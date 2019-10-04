@@ -27,9 +27,9 @@ class QNetwork():
     """
 
     def __init__(self, env, cfg):
-        """Define your network architecture here. It is also a good idea to
-        define any training operations and optimizers here, initialize your
-        variables, or alternately compile your model here.
+        """
+        env: Environment.
+        cfg: Config file.
         """
 
         # Model configuration
@@ -71,8 +71,9 @@ class Replay_Memory():
         Burn in episodes define the number of episodes that are written
         into the memory from the randomly initialized agent. Memory size is
         the maximum size after which old elements in the memory are replaced.
-        A simple (if not the most efficient) was to implement the memory is
-        as a list of transitions.
+        
+        memory_size: Size of the replay memory.
+        burn_in: Number of episodes that are written into the memory.
         """
 
         self.memory_size = memory_size
@@ -82,7 +83,8 @@ class Replay_Memory():
     def sample_batch(self, batch_size=32):
         """This function returns a batch of randomly sampled transitions
         - i.e. state, action, reward, next state, terminal flag tuples.
-        You will feed this to your model to train.
+        
+        batch_size: Batch size to return.
         """
 
         idx_batch = np.random.choice(np.arange(len(self.memory)),
@@ -93,18 +95,18 @@ class Replay_Memory():
 
     def append(self, transition):
         """Appends transition to the memory.
+        
+        transition: list [prev_state, action, reward, state, done]
         """
 
         self.memory.append(transition)
 
 
 class DQN_Agent():
-    r"""In this class, we will implement functions to do the following.
+    r"""In this class, we implement functions to do the following.
     - Create an instance of the Q Network class.
     - Create a function that constructs a policy from the Q values
-        predicted by the Q Network.
-        (a) Epsilon Greedy Policy.
-        (b) Greedy Policy.
+        predicted by the Q Network using Epsilon Greedy Policy.
     - Create a function to train the Q Network, by interacting with the
         environment.
     - Create a function to test the Q Network's performance on the environment.
@@ -115,6 +117,9 @@ class DQN_Agent():
         """Create an instance of the network itself, as well as the memory.
         Here is also a good place to set environmental parameters,
         as well as training parameters - number of episodes/iterations, etc.
+        
+        cfg: Config file.
+        render: To render the environment.
         """
 
         self.env = gym.make(cfg.ENV)
@@ -137,6 +142,8 @@ class DQN_Agent():
 
     def epsilon_greedy_policy(self, q_values):
         """Return an action based on the epsilon greedy policy
+        
+        q_values: Q values.
         """
 
         if np.random.uniform() < self.epsilon:
@@ -146,6 +153,9 @@ class DQN_Agent():
 
     def save_model_weights(self, directory, episode):
         """Save the weights of a model
+        
+        directory: Dir to save the model.
+        episode: Episode number.
         """
         filepath = osp.join(directory, 'ckpt_{}.h5'.format(episode))
         self.q_network.model.save_weights(filepath)
@@ -170,11 +180,8 @@ class DQN_Agent():
 
     def train(self):
         """In this function, we will train our network.
-        If training without experience replay_memory, then you will interact
-        with the environment in this function, while also updating your
-        network parameters.
-        When using replay memory, you should interact with environment here,
-        and store these transitions to memory, while also updating your model.
+        Using replay memory, we interact with environment here,
+        and store these transitions to memory, while also updating the model.
         """
 
         def get_run_id():
@@ -213,7 +220,7 @@ class DQN_Agent():
                 action = self.epsilon_greedy_policy(q_values)
                 state, reward, done, _ = self.env.step(action)
                 r.append(reward)
-                # Step 2: Add data for replay buffer
+                # Step 2: Add data to replay buffer
                 transition = [prev_state, action, reward, state, done]
                 self.r_memory.memory.append(transition)
                 # Step 3: Sample batch for training from the replay buffer
@@ -233,6 +240,7 @@ class DQN_Agent():
                 q_curr = q_net[range(self.batch_size), actions]
                 q_net[range(self.batch_size), actions] = q_target
                 td_error += np.mean(np.absolute(q_target - q_curr))
+                # Step 5: train the model
                 if training:
                     history = self.q_network.model.fit(
                         p_states, q_net, epochs=self.epochs,
@@ -273,10 +281,8 @@ class DQN_Agent():
                 self.plot(tdpath, 'td error', '#episodes', self.td_errors)
 
     def test(self):
-        """Evaluate the performance of your agent over 100 episodes, by
-        calculating cummulative rewards for the 100 episodes. Here you
-        need to interact with the environment, irrespective of whether
-        you are using a memory.
+        """Evaluate the performance of the agent over 100 episodes, by
+        calculating cummulative rewards for the 100 episodes.
         """
 
         print('*'*10, 'EVALUATION', '*'*10)
@@ -302,7 +308,7 @@ class DQN_Agent():
                   episodes)
 
     def burn_in_memory(self):
-        """Initialize your replay memory with a burn_in number
+        """Initialize the replay memory with a burn_in number
         of episodes/transitions.
         """
 
