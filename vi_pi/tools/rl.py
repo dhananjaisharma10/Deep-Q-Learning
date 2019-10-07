@@ -5,7 +5,7 @@ from __future__ import print_function, unicode_literals
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import deeprl_hw2q2.lake_envs as lake_env
+import lake_envs as lake_env
 
 
 def print_policy(policy, action_names):
