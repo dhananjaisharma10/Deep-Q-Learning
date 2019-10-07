@@ -7,7 +7,7 @@ from builtins import input
 
 import time
 import gym
-from deeprl_hw2q2 import lake_envs, rl
+from tools import lake_envs, rl
 
 
 def run_random_policy(env):
