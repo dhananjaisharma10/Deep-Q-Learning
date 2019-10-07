@@ -19,7 +19,7 @@ The module takes as argument the environment's config file as specified above.
 
 In order to run the code, please type the following command in terminal:
 ```
-python Q3-3-DQN/DQN_Implementation.py --env <environment's .py config file>
+python dqn/DQN_Implementation.py --env <environment's .py config file>
 ```
 
 The module will also generate videos of the environment at 0/3, 1/3, 2/3 and 3/3 of the total number of episodes as specified in the configuration.
@@ -36,5 +36,5 @@ The subfolder `vi_pi/tools/` consists of modules `lake_envs.py` and `rl.py`.
 To run the code, please specify the configuration to be tested in the function `run_my_policy` in the module `vi_pi/runner.py`. Then run it by typing the following code in terminal:
 
 ```
-python Q2-VI-PI/runner.py
+python vi_pi/runner.py
 ```
