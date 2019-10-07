@@ -4,7 +4,7 @@ Homework 2 for Deep Reinforcement Learning and Control
 This repository implements [DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf), and Value Iteration and Policy Iteration as given in [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/bookdraft2017nov5.pdf).
 
 # DQN algorithm
-The subfolder `Q3-3-DQN/` consists of the modules: `DQN_Implementation.py`, `cartpole.py` and `mountaincar.py`.
+The subfolder `dqn/` consists of the modules: `DQN_Implementation.py`, `cartpole.py` and `mountaincar.py`.
 
 `DQN_Implementation.py` implements the Deep Q-Network algorithm. It consists of three classes:
 
@@ -26,14 +26,14 @@ The module will also generate videos of the environment at 0/3, 1/3, 2/3 and 3/3
 
 # Value Iteration and Policy Iteration
 
-The subfolder `Q2-VI-PI\deeprl_hw2q2` consists of modules `lake_envs.py` and `rl.py`.
+The subfolder `vi_pi/tools/` consists of modules `lake_envs.py` and `rl.py`.
 
 `rl.py` consists of various functions that implement policy iteration by combining policy evaluation and policy improvement. It also implements the value iteration algorithm. Both policy iteration and value iteration have been implemented using synchronous and asynchronous methods. Amongst asynchronous methods, there are two methods: 
 - ordered states: states are iterated from smallest to highest.
 - random permutation: states are iterated over in a random fashion.
 - custom: only for value iteration. We implement value iteration using Manhattan Distance ordering of the states.
 
-To run the code, please specify the configuration to be tested in the function `run_my_policy` in the module `Q2-VI-PI/runner.py`. Then run it by typing the following code in terminal:
+To run the code, please specify the configuration to be tested in the function `run_my_policy` in the module `vi_pi/runner.py`. Then run it by typing the following code in terminal:
 
 ```
 python Q2-VI-PI/runner.py
