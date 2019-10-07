@@ -1,5 +1,4 @@
-# HW2 RL
-Homework 2 for Deep Reinforcement Learning and Control
+# Deep Q-learning and Value and Policy iteration
 
 This repository implements [DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf), and Value Iteration and Policy Iteration as given in [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/bookdraft2017nov5.pdf).
 
