@@ -1,4 +1,3 @@
-# 10-703 HW2 Problem 2
 ## Setup
 
 You will need to install the openai gym and numpy in order to complete the
@@ -45,9 +44,9 @@ There are four actions: LEFT, UP, DOWN, RIGHT represented as integers. The
 these. For example:
 
 ```
-import deeprl_hw2q2.lake_envs
+import tools.lake_envs
 
-print(deeprl_hw2q2.lake_envs.LEFT)
+print(tools.lake_envs.LEFT)
 ```
 
 will print out the number 0.
@@ -74,11 +73,11 @@ use the following code:
 
 ```
 import gym
-import deeprl_hw2q2.lake_envs
+import tools.lake_envs
 
 env = gym.make('Deterministic-4x4-FrozenLake-v0')
 state = 0
-action = deeprl_hw2q2.lake_envs.LEFT
+action = tools.lake_envs.LEFT
 print(env.P[state][action])
 ```
 
