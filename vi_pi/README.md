@@ -1,29 +1,6 @@
 ## Setup
 
-You will need to install the openai gym and numpy in order to complete the
-assignment. This assignment should work in either python 2.7 or python 3.
-
-We have included a requirements.txt file to make the installation of
-dependencies easy. We recommend making a virtualenv for this homework. If you
-are not familiar with virtualenv you can read more about it here:
-https://virtualenv.pypa.io/en/stable/
-
-You can also install the [`virtualenvwrapper`](https://virtualenv.pypa.io/en/stable/) package if you want a more convenient command line interface.
-
-To install the packages using pip and a virtualenv run the following commands:
-
-```
-virtualenv hw2q2_env
-source hw2q2_env/bin/activate
-pip install -U -r requirements.txt
-```
-
-The following command should now work:
-
-```
-python -c 'import gym'
-```
-
+You will need to install the openai gym and numpy. The code should work in either python 2.7 or python 3.
 
 ## OpenAI Gym Environments
 ### Creating the environments
@@ -32,7 +9,7 @@ To create the environment use the following code snippet:
 
 ```
 import gym
-import deeprl_hw2q2.lake_envs
+import tools.lake_envs
 
 env = gym.make('Deterministic-4x4-FrozenLake-v0')
 ```
@@ -40,7 +17,7 @@ env = gym.make('Deterministic-4x4-FrozenLake-v0')
 ### Actions
 
 There are four actions: LEFT, UP, DOWN, RIGHT represented as integers. The
-`deep_rl_hw2q2.lake_envs` contains variables to reference
+`tools.lake_envs` contains variables to reference
 these. For example:
 
 ```
